@@ -4,7 +4,7 @@ The dataset files are NOT stored in this repository due to size.
 
 ## Stage 1 Dataset (dr-stage1-unified)
 Download from Kaggle:
-https://www.kaggle.com/datasets/aymenslimani/dr-stage1-unified
+https://www.kaggle.com/datasets/aymenslimani/dr-stage1-unified-v2
 
 After downloading, place files in this structure:
 ```
