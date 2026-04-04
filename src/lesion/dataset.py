@@ -119,14 +119,22 @@ class LesionDataset(Dataset):
             image = augmented['image']       # Tensor (3, H, W) after ToTensorV2
             mask_stack = augmented['mask']    # Tensor (5, H, W) after ToTensorV2
 
-        # ---- 4. Ensure correct tensor format ----
+        # ---- 4. Ensure correct tensor format: (C, H, W) ----
+        #   ToTensorV2 in newer albumentations does NOT auto-transpose
+        #   multi-channel masks, so we handle it explicitly.
         if isinstance(mask_stack, np.ndarray):
-            # If no transform was applied, convert manually
+            # No transform applied — convert manually
             mask_tensor = torch.from_numpy(
                 mask_stack.transpose(2, 0, 1)  # (H, W, 5) → (5, H, W)
             ).float()
+        elif isinstance(mask_stack, torch.Tensor):
+            if mask_stack.dim() == 3 and mask_stack.shape[-1] == len(self.lesion_types):
+                # Shape is (H, W, 5) — need to permute to (5, H, W)
+                mask_tensor = mask_stack.permute(2, 0, 1).float()
+            else:
+                mask_tensor = mask_stack.float()
         else:
-            mask_tensor = mask_stack.float()
+            mask_tensor = torch.as_tensor(mask_stack).float()
 
         return image, mask_tensor
 
@@ -155,10 +163,10 @@ def get_train_transforms(img_size=512):
         A.HorizontalFlip(p=0.5),
         A.VerticalFlip(p=0.5),
         A.RandomRotate90(p=0.5),
-        A.ShiftScaleRotate(
-            shift_limit=0.0625,
-            scale_limit=0.1,
-            rotate_limit=45,
+        A.Affine(
+            translate_percent={'x': (-0.0625, 0.0625), 'y': (-0.0625, 0.0625)},
+            scale=(0.9, 1.1),
+            rotate=(-45, 45),
             border_mode=cv2.BORDER_CONSTANT,
             p=0.5
         ),
@@ -169,7 +177,7 @@ def get_train_transforms(img_size=512):
         A.ColorJitter(brightness=0.2, contrast=0.2,
                       saturation=0.2, hue=0.1, p=0.4),
         A.GaussianBlur(blur_limit=(3, 5), p=0.2),
-        A.GaussNoise(var_limit=(5, 25), p=0.2),
+        A.GaussNoise(std_range=(0.02, 0.05), p=0.2),
 
         # === Normalization (ImageNet stats for pretrained backbones) ===
         A.Normalize(mean=(0.485, 0.456, 0.406),
