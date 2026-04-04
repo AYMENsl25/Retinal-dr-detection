@@ -1,15 +1,11 @@
 """
 Retinal DR Detection — Lesion Training Utilities
 ==================================================
-Multi-label loss function and training helpers for 5-channel
-lesion segmentation.
+Multi-label loss function for 5-channel lesion segmentation.
 
-IMPORTANT difference from vessel segmentation:
-  - Vessel: single channel  → loss computed on flat (B*H*W) tensor
-  - Lesion: five channels    → loss computed PER CHANNEL then averaged
-
-This ensures the model learns each lesion type equally, even if some
-types (like MA) cover very few pixels compared to others (like OD).
+Key insight: OD is huge (~5% of pixels), MA is tiny (~0.003% of pixels).
+If we weight all channels equally, the model just learns OD and ignores
+everything else. Solution: give HIGHER weight to rare/tiny lesion types.
 """
 
 import torch
@@ -18,35 +14,47 @@ import torch.nn as nn
 
 class MultiLabelDiceBCELoss(nn.Module):
     """
-    Combined Dice + BCE loss for multi-label segmentation.
+    Weighted Dice + BCE loss for multi-label segmentation.
 
-    How it works:
-      1. For EACH of the 5 lesion channels independently:
-         - Compute Dice Loss  (directly optimises our evaluation metric)
-         - Compute BCE Loss   (provides stable per-pixel gradients)
-         - Combine:  channel_loss = dice_w * Dice + bce_w * BCE
-      2. Average across all channels → final scalar loss
+    WHAT CHANGED from the original version:
+      - Each lesion channel now has its own weight in the loss
+      - Tiny lesions (MA, HE, CW) get HIGHER weights
+      - Large lesions (OD) get LOWER weights
+      - This forces the model to spend more effort learning tiny structures
 
-    Why per-channel?
-      If we flattened all 5 channels together, the loss would be
-      dominated by whatever lesion type covers the most pixels (e.g. OD).
-      Per-channel averaging gives each lesion type equal importance.
+    The weights are based on how rare each lesion type is:
+      MA  = 3.0  (tiny dots, hardest to detect → highest weight)
+      HE  = 2.5  (small blobs, hard)
+      EX  = 1.5  (medium patches)
+      OD  = 0.5  (giant circle, easy → lowest weight)
+      CW  = 2.5  (small patches, hard)
 
     Args:
-        dice_weight : Weight for the Dice component (default 0.5)
-        bce_weight  : Weight for the BCE component  (default 0.5)
-        smooth      : Smoothing factor to avoid division by zero
+        dice_weight    : Weight for the Dice component (default 0.5)
+        bce_weight     : Weight for the BCE component  (default 0.5)
+        smooth         : Smoothing factor to avoid division by zero
+        channel_weights: Per-channel importance weights [MA, HE, EX, OD, CW]
     """
 
-    def __init__(self, dice_weight=0.5, bce_weight=0.5, smooth=1e-6):
+    def __init__(self, dice_weight=0.5, bce_weight=0.5, smooth=1e-6,
+                 channel_weights=None):
         super().__init__()
         self.dice_weight = dice_weight
         self.bce_weight = bce_weight
         self.smooth = smooth
         self.bce = nn.BCEWithLogitsLoss(reduction='none')
 
+        # Default weights: penalise ignoring tiny lesions
+        if channel_weights is None:
+            #                  MA   HE   EX   OD   CW
+            channel_weights = [3.0, 2.5, 1.5, 0.5, 2.5]
+        self.register_buffer(
+            'channel_weights',
+            torch.tensor(channel_weights, dtype=torch.float32)
+        )
+
     def _dice_loss_per_channel(self, pred_logits, targets):
-        """Compute Dice loss for each channel separately."""
+        """Compute WEIGHTED Dice loss for each channel separately."""
         pred = torch.sigmoid(pred_logits)               # (B, C, H, W)
         B, C, H, W = pred.shape
 
@@ -58,14 +66,25 @@ class MultiLabelDiceBCELoss(nn.Module):
         union = pred_flat.sum(dim=1) + tgt_flat.sum(dim=1)    # (C,)
 
         dice = (2.0 * intersection + self.smooth) / (union + self.smooth)
-        return (1.0 - dice).mean()   # Average over channels
+        dice_loss = 1.0 - dice   # (C,)
+
+        # Apply channel weights: MA loss × 3.0, OD loss × 0.5, etc.
+        w = self.channel_weights.to(dice_loss.device)
+        weighted = (dice_loss * w).sum() / w.sum()
+        return weighted
 
     def _bce_loss_per_channel(self, pred_logits, targets):
-        """Compute BCE loss averaged over channels."""
-        # BCEWithLogitsLoss with reduction='none' gives (B, C, H, W)
-        bce_all = self.bce(pred_logits, targets)
-        # Average over pixels (H, W), then over batch (B), then channels (C)
-        return bce_all.mean()
+        """Compute WEIGHTED BCE loss per channel."""
+        B, C, H, W = pred_logits.shape
+        bce_all = self.bce(pred_logits, targets)  # (B, C, H, W)
+
+        # Average over batch and spatial dims → per-channel loss (C,)
+        per_channel = bce_all.mean(dim=(0, 2, 3))  # (C,)
+
+        # Apply channel weights
+        w = self.channel_weights.to(per_channel.device)
+        weighted = (per_channel * w).sum() / w.sum()
+        return weighted
 
     def forward(self, pred_logits, targets):
         """
