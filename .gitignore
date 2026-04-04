@@ -228,6 +228,7 @@ models_result*/predictions*/
 extract_arch.py
 compare.py
 clean_nbs.py
+clean_smart.py
 
 # Zip exports from Colab
 *.zip
