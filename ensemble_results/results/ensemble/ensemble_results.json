@@ -1,0 +1,59 @@
+{
+  "individual_models": {
+    "CSNet": {
+      "dice": "0.7946399",
+      "iou": "0.65925515",
+      "sensitivity": "0.7689922",
+      "specificity": "0.9814292",
+      "precision": "0.8220574",
+      "accuracy": "0.96010727",
+      "auc_roc": 0.9779974760618955,
+      "auc_pr": 0.8812563460072967
+    },
+    "AttentionUNet": {
+      "dice": "0.79875594",
+      "iou": "0.6649406",
+      "sensitivity": "0.7922013",
+      "specificity": "0.9786478",
+      "precision": "0.80542",
+      "accuracy": "0.9599345",
+      "auc_roc": 0.9756484070602307,
+      "auc_pr": 0.8799820688927052
+    },
+    "SwinUNet": {
+      "dice": "0.74640375",
+      "iou": "0.59541",
+      "sensitivity": "0.86936504",
+      "specificity": "0.9486673",
+      "precision": "0.6539152",
+      "accuracy": "0.94070786",
+      "auc_roc": 0.9649463066959759,
+      "auc_pr": 0.8477303064943754
+    }
+  },
+  "ensemble_avg_2models": {
+    "dice": "0.8015349",
+    "iou": "0.6688012",
+    "sensitivity": "0.78167176",
+    "specificity": "0.98117155",
+    "precision": "0.8224338",
+    "accuracy": "0.9611481",
+    "auc_roc": 0.9796018859523133,
+    "auc_pr": 0.8876811775935115
+  },
+  "ensemble_weighted_3models": {
+    "dice": "0.8026396",
+    "iou": "0.67034084",
+    "sensitivity": "0.79381233",
+    "specificity": "0.97945046",
+    "precision": "0.81166536",
+    "accuracy": "0.9608183",
+    "auc_roc": 0.9758828361350282,
+    "auc_pr": 0.8838686475702762
+  },
+  "weights": {
+    "CSNet": 0.4,
+    "AttentionUNet": 0.4,
+    "SwinUNet": 0.2
+  }
+}

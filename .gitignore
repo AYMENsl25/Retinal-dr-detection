@@ -205,3 +205,28 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# ============================================================
+# Retinal DR Detection — Project Specific
+# ============================================================
+
+# Raw datasets (too large for GitHub)
+data/
+
+# Model checkpoint files (500MB+ each)
+*.pt
+*.pth
+*.ckpt
+checkpoints/
+
+# Large image prediction folders inside results
+models_results/
+models_result*/checkpoints/
+models_result*/predictions*/
+
+# Temp / scratch scripts
+extract_arch.py
+compare.py
+
+# Zip exports from Colab
+*.zip
