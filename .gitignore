@@ -227,6 +227,7 @@ models_result*/predictions*/
 # Temp / scratch scripts
 extract_arch.py
 compare.py
+clean_nbs.py
 
 # Zip exports from Colab
 *.zip
