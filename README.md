@@ -114,10 +114,5 @@ retinal-dr-detection/
 MIT License
 """
 
-# Save to your project folder
-with open(r'C:\path\to\retinal-dr-detection\README.md', 'w', encoding='utf-8') as f:
-    f.write(readme)
-
-print("✅ README.md updated!")
 
 
