@@ -56,17 +56,66 @@ class LesionDataset(Dataset):
 
     def __init__(self, csv_file, base_dir, transform=None,
                  lesion_mask_dir='lesion_masks',
-                 lesion_types=None):
+                 lesion_types=None,
+                 blacklist_path=None):
         self.df = pd.read_csv(csv_file)
 
         # Keep only rows that have at least one lesion mask
         if 'has_lesion' in self.df.columns:
             self.df = self.df[self.df['has_lesion'] == True].reset_index(drop=True)
 
+        # ── Blacklist filtering: remove corrupted/low-quality images ──
+        blacklisted_ids = self._load_blacklist(blacklist_path)
+        if blacklisted_ids:
+            before_count = len(self.df)
+            self.df = self.df[~self.df['img_id'].isin(blacklisted_ids)].reset_index(drop=True)
+            removed = before_count - len(self.df)
+            if removed > 0:
+                print(f"🚫 Blacklist: removed {removed} corrupted images "
+                      f"({before_count} → {len(self.df)})")
+
         self.base_dir = base_dir
         self.lesion_mask_dir = lesion_mask_dir
         self.transform = transform
         self.lesion_types = lesion_types or LESION_TYPES
+
+    @staticmethod
+    def _load_blacklist(path=None):
+        """
+        Load blacklisted image IDs from a text file.
+
+        Searches for 'blacklisted_images.txt' in common locations:
+          1. Explicit path argument
+          2. Project root (auto-detected from src/lesion/ location)
+
+        File format: one img_id per line, '#' comments ignored.
+
+        Returns:
+            set of blacklisted image IDs, or empty set
+        """
+        search_paths = []
+        if path:
+            search_paths.append(path)
+
+        # Auto-detect project root (two levels up from this file)
+        import pathlib
+        module_dir = pathlib.Path(__file__).resolve().parent
+        project_root = module_dir.parent.parent
+        search_paths.append(str(project_root / 'blacklisted_images.txt'))
+
+        for p in search_paths:
+            if os.path.exists(p):
+                with open(p, 'r') as f:
+                    ids = set()
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith('#'):
+                            ids.add(line)
+                if ids:
+                    print(f"📋 Loaded {len(ids)} blacklisted IDs from {p}")
+                return ids
+
+        return set()
 
     def __len__(self):
         return len(self.df)
