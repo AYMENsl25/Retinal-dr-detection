@@ -1,0 +1,45 @@
+{
+  "input_size": [512, 512],
+  "color_space": "RGB",
+  "normalize_mean": [0.485, 0.456, 0.406],
+  "normalize_std": [0.229, 0.224, 0.225],
+  "clahe": {
+    "enabled": false,
+    "reason": "The loaded notebooks used Albumentations Resize plus ImageNet Normalize. They did not apply CLAHE at inference."
+  },
+  "vessel": {
+    "architecture": "TransUNet",
+    "checkpoint": "vessel_unet.pth",
+    "input_channels": 3,
+    "output_channels": 1,
+    "threshold": 0.5,
+    "normalization": "ImageNet RGB mean/std"
+  },
+  "lesion": {
+    "architecture": "segmentation_models_pytorch.Unet",
+    "encoder_name": "resnet34",
+    "checkpoint": "lesion_unet.pth",
+    "input_channels": 3,
+    "output_channels": 5,
+    "lesion_types": ["MA", "HE", "EX", "OD", "CW"],
+    "threshold": 0.3,
+    "normalization": "ImageNet RGB mean/std"
+  },
+  "grader": {
+    "architecture": "ConvNeXtBase9Channel",
+    "checkpoint": "grader_cnn.pth",
+    "input_channels": 9,
+    "num_classes": 5,
+    "mask_channels": ["vessel", "MA", "HE", "EX", "OD", "CW"],
+    "image_channels": {
+      "normalize_mean": [0.485, 0.456, 0.406],
+      "normalize_std": [0.229, 0.224, 0.225]
+    },
+    "mask_channels_normalization": {
+      "source_range": [0.0, 1.0],
+      "normalize_mean": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
+      "normalize_std": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
+      "final_range": [-1.0, 1.0]
+    }
+  }
+}
