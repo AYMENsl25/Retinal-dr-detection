@@ -1,0 +1,21 @@
+# RetinaScope-AI v2 — Grading & Cleanup Tasks
+
+- [x] Copy Model Checkpoints
+  - [x] Copy `grade_best_model.pt` to `backend/checkpoints/grader_cnn.pth`
+  - [x] Copy `UNetPP_ResNet34_best.pth` to `backend/checkpoints/lesion_unet.pth`
+  - [x] Copy `UNetPP_ResNet34_best.pth` to `backend/checkpoints/lesion_unetpp.pth`
+  - [x] Copy `Attention_UNet_ResNet34_best.pth` to `backend/checkpoints/lesion_attention_unet.pth`
+  - [x] Copy `YOLOV11_best.pt` to `backend/checkpoints/lesion_yolo.pt`
+- [x] Fix Model Loading Code
+  - [x] Update `backend/app/models/grader_cnn.py` to load state_dict ConvNeXt-Base model
+  - [x] Update `backend/app/models/registry.py` to load the Stage B lesion ensemble
+  - [x] Feed the grader soft vessel probabilities and soft lesion probabilities, not cleaned binary masks
+  - [x] Point settings and `.env` at `backend/checkpoints/preprocess.json`
+- [x] Verification
+  - [x] Run the pipeline test script to verify successful model loading and ConvNeXt grading
+  - [x] Check backend health route through FastAPI TestClient
+  - [x] Verify `/api/v1/health` reports vessel, grader, Attention U-Net, U-Net/UNetPP, and YOLO loaded
+- [ ] Folder Structure Cleanup
+  - [ ] Remove temporary inspection/test scripts (`inspect_models.py`, `inspect_keys.py`, `test_loader.py`, `test_lesion.py`)
+  - [ ] Move any extra `.md` files or plan documents in the root to an organized directory
+  - [ ] Remove the raw uploaded `.pt`/`.pth` checkpoints from the workspace root (after verification)
